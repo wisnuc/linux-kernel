@@ -385,7 +385,7 @@ void rtw_clear_hostwakeupgpio(PADAPTER padapter);
 
 #ifdef CONFIG_LOAD_PHY_PARA_FROM_FILE
 extern char *rtw_phy_file_path;
-extern char file_path[PATH_LENGTH_MAX];
+extern char rtw_file_path[PATH_LENGTH_MAX];
 #define GetLineFromBuffer(buffer)   strsep(&buffer, "\n")
 #endif
 

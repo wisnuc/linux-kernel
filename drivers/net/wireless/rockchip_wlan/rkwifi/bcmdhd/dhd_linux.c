@@ -16079,7 +16079,7 @@ write_dump_to_file(dhd_pub_t *dhd, uint8 *buf, int size, char *fname)
 #endif /* CUSTOMER_HW4_DEBUG */
 
 	/* print SOCRAM dump file path */
-	DHD_ERROR(("%s: file_path = %s\n", __FUNCTION__, memdump_path));
+	DHD_ERROR(("%s: rtw_file_path = %s\n", __FUNCTION__, memdump_path));
 
 	/* Write file */
 	ret = write_file(memdump_path, file_mode, buf, size);

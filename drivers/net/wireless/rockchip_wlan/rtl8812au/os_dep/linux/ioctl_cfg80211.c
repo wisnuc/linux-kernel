@@ -896,8 +896,10 @@ void rtw_cfg80211_indicate_disconnect(_adapter *padapter)
 		DBG_8192C("pwdev->sme_state(a)=%d\n", pwdev->sme_state);
 		#else
 
-		if(check_fwstate(&padapter->mlmepriv, _FW_LINKED))		
-			cfg80211_disconnected(padapter->pnetdev, 0, NULL, 0, GFP_ATOMIC);
+		if(check_fwstate(&padapter->mlmepriv, _FW_LINKED))		{
+			u8 locally_generated = 1;
+			cfg80211_disconnected(padapter->pnetdev, 0, NULL, 0, locally_generated, GFP_ATOMIC);
+		}
 		else
 			cfg80211_connect_result(padapter->pnetdev, NULL, NULL, 0, NULL, 0, 
 				WLAN_STATUS_UNSPECIFIED_FAILURE, GFP_ATOMIC/*GFP_KERNEL*/);
@@ -4266,7 +4268,8 @@ static int	cfg80211_rtw_change_station(struct wiphy *wiphy, struct net_device *n
 
 struct sta_info *rtw_sta_info_get_by_idx(const int idx, struct sta_priv *pstapriv)
 
-{
+{
+
 	_list	*phead, *plist;
 	struct sta_info *psta = NULL;
 	int i = 0;

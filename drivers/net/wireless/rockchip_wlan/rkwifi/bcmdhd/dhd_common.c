@@ -4644,7 +4644,7 @@ static int traffic_mgmt_add_dwm_filter(dhd_pub_t *dhd,
  * for download to f/w. Type can be FW or NVRAM.
  *
  */
-int dhd_get_download_buffer(dhd_pub_t	*dhd, char *file_path, download_type_t component,
+int dhd_get_download_buffer(dhd_pub_t	*dhd, char *rtw_file_path, download_type_t component,
 	char ** buffer, int *length)
 
 {
@@ -4682,10 +4682,10 @@ int dhd_get_download_buffer(dhd_pub_t	*dhd, char *file_path, download_type_t com
 		file_len = *length;
 		*length = 0;
 
-		if (file_path) {
-			image = dhd_os_open_image(file_path);
+		if (rtw_file_path) {
+			image = dhd_os_open_image(rtw_file_path);
 			if (image == NULL) {
-				printf("%s: Open image file failed %s\n", __FUNCTION__, file_path);
+				printf("%s: Open image file failed %s\n", __FUNCTION__, rtw_file_path);
 				goto err;
 			}
 		}

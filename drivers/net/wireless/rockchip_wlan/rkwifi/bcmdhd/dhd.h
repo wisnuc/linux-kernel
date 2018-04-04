@@ -2277,7 +2277,7 @@ void custom_rps_map_clear(struct netdev_rx_queue *queue);
 #endif /* CONFIG_MACH_UNIVERSAL5433 || CONFIG_MACH_UNIVERSAL7420 || CONFIG_SOC_EXYNOS8890 */
 #endif 
 
-int dhd_get_download_buffer(dhd_pub_t	*dhd, char *file_path, download_type_t component,
+int dhd_get_download_buffer(dhd_pub_t	*dhd, char *rtw_file_path, download_type_t component,
 	char ** buffer, int *length);
 
 void dhd_free_download_buffer(dhd_pub_t	*dhd, void *buffer, int length);
