@@ -74,7 +74,7 @@ static u32 i2c_cy8ctouch_read(struct cy8c_touch *ts,  u8 *buf, u32 num)
 
 	xfer_msg[1].addr = client->addr;
 	xfer_msg[1].len = num;
-	xfer_msg[1].flags |= I2C_M_RD;
+	xfer_msg[1].flags = I2C_M_RD;
 	xfer_msg[1].buf = buf;
 
 	ret = i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg));
@@ -249,7 +249,7 @@ cy8ctouch_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	if (client->irq > 0) {
-		rc = devm_request_irq(dev, client->irq, cy8ctouch_irq, IRQF_TRIGGER_LOW,
+		rc = devm_request_irq(dev, client->irq, cy8ctouch_irq, IRQF_TRIGGER_FALLING,
 				      client->name, ts);
 		if (rc < 0) {
 			dev_err(&client->dev, "cy8ctouch_probe: request irq failed\n");

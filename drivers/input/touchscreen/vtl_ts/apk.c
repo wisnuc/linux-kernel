@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -48,7 +49,7 @@ static int apk_i2c_transfer(struct i2c_client *client,unsigned char i2c_addr,uns
 	msgs[0].addr  = i2c_addr;
 	msgs[0].len   = len;
 	msgs[0].buf   = buf;
-	msgs[0].scl_rate = TS_I2C_SPEED;		//only for rockchip
+	//msgs[0].scl_rate = TS_I2C_SPEED;		//only for rockchip
 	
 	if(i2c_transfer(client->adapter, msgs, 1)!= 1)
 	{
@@ -213,7 +214,7 @@ static ssize_t apk_read(struct file *file, char __user *buff, size_t count, loff
 
 	if(copy_to_user(buff, frame_data,len)){
 		return -EFAULT; 
-	};	
+	}
 	if(ret<0){
 		return -1;	
 	}

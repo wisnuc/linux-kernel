@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __RKCAMSYS_INTERNAL_H__
 #define __RKCAMSYS_INTERNAL_H__
 
@@ -30,7 +31,6 @@
 #include <linux/log2.h>
 #include <linux/gpio.h>
 #include <linux/rockchip/cpu.h>
-#include <linux/rockchip/iomap.h>
 #include <linux/rockchip/grf.h>
 #include <asm/uaccess.h>
 #include <linux/of.h>
@@ -175,8 +175,46 @@
 *v0.0x22.3:
 	1) switch TX1/RX1 D-PHY of rk3288/3399 to RX status before
 	it's initialization to avoid conflicting with sensor output.
+*v0.0x22.4:
+	1) enable SYS_STATUS_ISP status set.
+*v0.0x22.5:
+	1) gpio base start from 1000,adapt to it.
+*v0.0x22.6:
+	1) revert v0.0x22.3.
+*v0.0x22.7:
+	1) read MRV_MIPI_FRAME register in camsys_mrv_irq, and pass the value
+	fs_id and fe_id into isp library.
+*v0.0x22.8:
+	1) 3399 power management is wrong, correct it.
+*v0.0x23.0:
+       1) replace current->pid with irqsta->pid.
+*v0.0x24.0:
+       1) function is the same as commit in v0.0x22.3 but now is better way.
+*v0.0x25.0:
+	1) support px30.
+*v0.0x26.0:
+       1) v0.0x21.9 may not fix all the case of iommu issue caused by the
+       unexpected termination of process cameraserver, so we force to release
+       all iommu resource in |.release| of fops aganin if needed.
+*v0.0x27.0:
+       1) revert v0.0x22.5.
+*v0.0x28.0:
+       1) fix isp soft reset failure for rk3326.
+       reset on too high aclk rate will result in bus dead, so we reduce the aclk
+       before reset and then recover it after reset.
+*v0.0x28.1:
+       1) another reasonable solution of isp soft reset failure for rk3326.
+       reset on too high isp_clk rate will result in bus dead.
+       The signoff isp_clk rate is 350M, and the recommended rate
+       on reset from IC is NOT greater than 300M.
+*v0.0x29.0:
+       1) fix camera mipi phy config for rk3288.
+	   CSIHOST_PHY_SHUTDOWNZ and CSIHOST_DPHY_RSTZ is
+	   csi host control interface;so DPHY_RX1_SRC_SEL_MASK
+	   should be set DPHY_RX1_SRC_SEL_CSI.
 */
-#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0, 0x22, 3)
+
+#define CAMSYS_DRIVER_VERSION                   KERNEL_VERSION(0, 0x29, 0)
 
 #define CAMSYS_PLATFORM_DRV_NAME                "RockChip-CamSys"
 #define CAMSYS_PLATFORM_MARVIN_NAME             "Platform_MarvinDev"

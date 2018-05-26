@@ -46,6 +46,29 @@
 #include <dt-bindings/display/media-bus-format.h>
 
 / {
+	firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,inode_readahead_blks=8";
+					fsmgr_flags = "wait";
+				};
+				vendor {
+					compatible = "android,vendor";
+					dev = "/dev/block/by-name/vendor";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,inode_readahead_blks=8";
+					fsmgr_flags = "wait";
+				};
+			};
+		};
+	};
+
 	chosen {
 		bootargs = "earlycon=uart8250,mmio32,0xff690000 vmalloc=496M";
 	};
@@ -86,13 +109,14 @@
 			SYS_STATUS_SUSPEND	192000
 			SYS_STATUS_VIDEO_1080P	300000
 			SYS_STATUS_VIDEO_4K	396000
+			SYS_STATUS_VIDEO_4K_10B	528000
 			SYS_STATUS_PERFORMANCE	528000
 			SYS_STATUS_BOOST	396000
 			SYS_STATUS_DUALVIEW	396000
 			SYS_STATUS_ISP		396000
 		>;
 		auto-min-freq = <396000>;
-		auto-freq-en = <1>;
+		auto-freq-en = <0>;
 		status = "diasbled";
 	};
 
@@ -139,7 +163,7 @@
 
 	fiq-debugger {
 		compatible = "rockchip,fiq-debugger";
-		interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupts = <GIC_SPI 155 IRQ_TYPE_LEVEL_HIGH>;
 		rockchip,serial-id = <2>;
 		rockchip,wake-irq = <0>;
 		rockchip,irq-mode-enable = <0>;  /* If enable uart uses irq instead of fiq */
@@ -201,7 +225,7 @@
 		status = "okay";
 
 		ports = <&vopb_out>, <&vopl_out>;
-		memory-region = <&drm_logo>;
+		logo-memory-region = <&drm_logo>;
 
 		route {
 			route_edp: route-edp {
@@ -210,7 +234,7 @@
 				logo,kernel = "logo_kernel.bmp";
 				logo,mode = "center";
 				charge_logo,mode = "center";
-				connect = <&vopb_out_edp>;
+				connect = <&vopl_out_edp>;
 			};
 
 			route_dsi0: route-dsi0 {
@@ -219,7 +243,7 @@
 				logo,kernel = "logo_kernel.bmp";
 				logo,mode = "center";
 				charge_logo,mode = "center";
-				connect = <&vopb_out_dsi0>;
+				connect = <&vopl_out_dsi0>;
 			};
 
 			route_lvds: route-lvds {
@@ -228,7 +252,16 @@
 				logo,kernel = "logo_kernel.bmp";
 				logo,mode = "center";
 				charge_logo,mode = "center";
-				connect = <&vopb_out_lvds>;
+				connect = <&vopl_out_lvds>;
+			};
+
+			route_hdmi: route-hdmi {
+				status = "disabled";
+				logo,uboot = "logo.bmp";
+				logo,kernel = "logo_kernel.bmp";
+				logo,mode = "center";
+				charge_logo,mode = "center";
+				connect = <&vopb_out_hdmi>;
 			};
 		};
 	};
@@ -356,10 +389,6 @@
 	};
 };
 
-&edp_panel {
-	backlight = <&backlight>;
-};
-
 &cpu0 {
 	enable-method = "psci";
 };
@@ -370,7 +399,7 @@
 
 	opp-1800000000 {
 		opp-hz = /bits/ 64 <1800000000>;
-		opp-microvolt = <1350000>;
+		opp-microvolt = <1350000 1350000 1350000>;
 		clock-latency-ns = <40000>;
 		status = "disabled";
 	};
@@ -405,30 +434,23 @@
 	status = "okay";
 };
 
-&dsi0 {
-	ports {
-		dsi0_in: port {
-			dsi0_in_vopl: endpoint@1 {
-				status = "disabled";
-			};
-		};
-	};
+&dsi0_in_vopb {
+	status = "disabled";
 };
 
-&edp {
-	ports {
-		edp_in: port@0 {
-			edp_in_vopl: endpoint@1 {
-				status = "disabled";
-			};
-		};
-	};
+&edp_in_vopb {
+	status = "disabled";
+};
+
+&hdmi_in_vopl {
+	status = "disabled";
 };
 
 &rga {
 	compatible = "rockchip,rga2";
 	clocks = <&cru ACLK_RGA>, <&cru HCLK_RGA>, <&cru SCLK_RGA>;
 	clock-names = "aclk_rga", "hclk_rga", "clk_rga";
+	dma-coherent;
 };
 
 &usb_otg {

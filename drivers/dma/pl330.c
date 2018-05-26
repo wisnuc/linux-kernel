@@ -1107,6 +1107,16 @@ static inline int _ldst_devtomem(struct pl330_dmac *pl330, unsigned dry_run,
 		off += _emit_WFP(dry_run, &buf[off], cond, pxs->desc->peri);
 		off += _emit_LDP(dry_run, &buf[off], cond, pxs->desc->peri);
 		off += _emit_ST(dry_run, &buf[off], ALWAYS);
+#ifdef CONFIG_ARCH_ROCKCHIP
+		/*
+		 * Make suree dma has finish transmission, or later flush may
+		 * cause dma second transmission,and fifo is overrun.
+		 */
+		off += _emit_WMB(dry_run, &buf[off]);
+		off += _emit_NOP(dry_run, &buf[off]);
+		off += _emit_WMB(dry_run, &buf[off]);
+		off += _emit_NOP(dry_run, &buf[off]);
+#endif
 
 		if (!(pl330->quirks & PL330_QUIRK_BROKEN_NO_FLUSHP))
 			off += _emit_FLUSHP(dry_run, &buf[off],
@@ -1132,6 +1142,16 @@ static inline int _ldst_memtodev(struct pl330_dmac *pl330,
 		off += _emit_WFP(dry_run, &buf[off], cond, pxs->desc->peri);
 		off += _emit_LD(dry_run, &buf[off], ALWAYS);
 		off += _emit_STP(dry_run, &buf[off], cond, pxs->desc->peri);
+#ifdef CONFIG_ARCH_ROCKCHIP
+		/*
+		 * Make suree dma has finish transmission, or later flush may
+		 * cause dma second transmission,and fifo is overrun.
+		 */
+		off += _emit_WMB(dry_run, &buf[off]);
+		off += _emit_NOP(dry_run, &buf[off]);
+		off += _emit_WMB(dry_run, &buf[off]);
+		off += _emit_NOP(dry_run, &buf[off]);
+#endif
 
 		if (!(pl330->quirks & PL330_QUIRK_BROKEN_NO_FLUSHP))
 			off += _emit_FLUSHP(dry_run, &buf[off],
@@ -1254,7 +1274,11 @@ static inline int _setup_loops(struct pl330_dmac *pl330,
 	u32 ccr = pxs->ccr;
 	unsigned long c, bursts = BYTE_TO_BURST(x->bytes, ccr);
 	int off = 0;
-
+#ifdef CONFIG_ARCH_ROCKCHIP
+	if (!(pl330->quirks & PL330_QUIRK_BROKEN_NO_FLUSHP))
+		off += _emit_FLUSHP(dry_run, &buf[off],
+					pxs->desc->peri);
+#endif
 	while (bursts) {
 		c = bursts;
 		off += _loop(pl330, dry_run, &buf[off], &c, pxs);
@@ -1572,15 +1596,17 @@ static int pl330_update(struct pl330_dmac *pl330)
 
 			/* Detach the req */
 			descdone = thrd->req[active].desc;
-			thrd->req[active].desc = NULL;
+			if (descdone) {
+				if (!descdone->cyclic) {
+					thrd->req[active].desc = NULL;
+					thrd->req_running = -1;
+					/* Get going again ASAP */
+					_start(thrd);
+				}
 
-			thrd->req_running = -1;
-
-			/* Get going again ASAP */
-			_start(thrd);
-
-			/* For now, just make a list of callbacks to be done */
-			list_add_tail(&descdone->rqd, &pl330->req_done);
+				/* For now, just make a list of callbacks to be done */
+				list_add_tail(&descdone->rqd, &pl330->req_done);
+			}
 		}
 	}
 
@@ -1959,7 +1985,7 @@ static void pl330_tasklet(unsigned long data)
 		spin_lock(&pch->thread->dmac->lock);
 		_stop(pch->thread);
 		spin_unlock(&pch->thread->dmac->lock);
-		power_down = true;
+		power_down = pch->active;
 		pch->active = false;
 	} else {
 		/* Make sure the PL330 Channel thread is active */

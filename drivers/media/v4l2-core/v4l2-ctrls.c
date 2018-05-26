@@ -2666,6 +2666,8 @@ int v4l2_query_ext_ctrl(struct v4l2_ctrl_handler *hdl, struct v4l2_query_ext_ctr
 		qc->id = ctrl->id;
 	strlcpy(qc->name, ctrl->name, sizeof(qc->name));
 	qc->flags = user_flags(ctrl);
+	if (ctrl->max_stores)
+		qc->flags |= V4L2_CTRL_FLAG_CAN_STORE;
 	qc->type = ctrl->type;
 	qc->elem_size = ctrl->elem_size;
 	qc->elems = ctrl->elems;

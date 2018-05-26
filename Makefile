@@ -257,11 +257,17 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
 ARCH		?= arm64
 ARCH		?= $(SUBARCH)
 ifeq ($(ARCH),arm64)
+ifneq ($(wildcard $(srctree)/../prebuilts/gcc/linux-x86/aarch64/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu),)
+CROSS_COMPILE	?= $(srctree)/../prebuilts/gcc/linux-x86/aarch64/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+endif
 ifneq ($(wildcard $(srctree)/../prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9),)
 CROSS_COMPILE	?= $(srctree)/../prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-
 endif
 endif
 ifeq ($(ARCH),arm)
+ifneq ($(wildcard $(srctree)/../prebuilts/gcc/linux-x86/arm/gcc-linaro-6.3.1-2017.05-x86_64_arm-linux-gnueabihf),)
+CROSS_COMPILE	?= $(srctree)/../prebuilts/gcc/linux-x86/arm/gcc-linaro-6.3.1-2017.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+endif
 ifneq ($(wildcard $(srctree)/../prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9),)
 CROSS_COMPILE	?= $(srctree)/../prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androidkernel-
 endif
@@ -1506,6 +1512,7 @@ scripts: ;
 endif # KBUILD_EXTMOD
 
 clean: $(clean-dirs)
+	$(Q)rm -f kernel.img resource.img
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
 	@find $(if $(KBUILD_EXTMOD), $(KBUILD_EXTMOD), .) $(RCS_FIND_IGNORE) \

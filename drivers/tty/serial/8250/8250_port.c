@@ -1563,17 +1563,9 @@ int serial8250_handle_irq(struct uart_port *port, unsigned int iir)
 	DEBUG_INTR("status = %x...", status);
 
 	if (status & (UART_LSR_DR | UART_LSR_BI)) {
-		if (up->dma) {
-			/*
-			 * The RDI must be masked, or interrupt
-			 * would occur all the time.
-			 */
-			up->ier &= ~(UART_IER_RLSI | UART_IER_RDI);
-			up->port.read_status_mask &= ~UART_LSR_DR;
-			serial_port_out(port, UART_IER, up->ier);
-
+		if (up->dma)
 			dma_err = up->dma->rx_dma(up, iir);
-		}
+
 		if (!up->dma || dma_err)
 			status = serial8250_rx_chars(up, status);
 	}
@@ -2023,8 +2015,13 @@ dont_test_tx_en:
 	if (up->dma) {
 		retval = serial8250_request_dma(up);
 		if (retval) {
+#ifdef CONFIG_ARCH_ROCKCHIP
+			pr_warn_ratelimited("ttyS%d - failed to request DMA, use interrupt mode\n",
+					    serial_index(port));
+#else
 			pr_warn_ratelimited("ttyS%d - failed to request DMA\n",
 					    serial_index(port));
+#endif
 			up->dma = NULL;
 		}
 	}
@@ -2365,10 +2362,9 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 	}
 
 	serial8250_set_divisor(port, baud, quot, frac);
-
-	if (up->dma)
-		up->fcr = UART_FCR_ENABLE_FIFO | UART_FCR_T_TRIG_11;
-
+#ifdef CONFIG_ARCH_ROCKCHIP
+	up->fcr = UART_FCR_ENABLE_FIFO | UART_FCR_T_TRIG_10 | UART_FCR_R_TRIG_10;
+#endif
 	/*
 	 * LCR DLAB must be set to enable 64-byte FIFO mode. If the FCR
 	 * is written without DLAB set, this mode will be disabled.

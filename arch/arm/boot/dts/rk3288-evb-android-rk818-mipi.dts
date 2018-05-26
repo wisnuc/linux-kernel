@@ -81,10 +81,11 @@
 };
 
 &cpu0 {
-	cpu0-supply = <&vdd_cpu>;
+	cpu-supply = <&vdd_cpu>;
 };
 
 &edp_panel {
+	backlight = <&backlight>;
 	power-supply = <&vcc_lcd>;
 };
 
@@ -142,6 +143,8 @@
 		vcc7-supply = <&vcc_sys>;
 		vcc8-supply = <&vcc_sys>;
 		vcc9-supply = <&vcc_io>;
+		boost-supply = <&vcc_sys>;
+		h_5v-supply = <&boost>;
 
 		regulators {
 			vdd_logic: DCDC_REG1 {
@@ -187,6 +190,17 @@
 				regulator-name = "vcc_io";
 				regulator-state-mem {
 					regulator-off-in-suspend;
+				};
+			};
+
+			boost: DCDC_BOOST {
+				regulator-always-on;
+				regulator-boot-on;
+				regulator-min-microvolt = <5000000>;
+				regulator-max-microvolt = <5000000>;
+				regulator-name = "boost";
+				regulator-state-mem {
+					regulator-on-in-suspend;
 				};
 			};
 
@@ -302,6 +316,15 @@
 					regulator-on-in-suspend;
 				};
 			};
+
+			h_5v: HDMI_SWITCH {
+				regulator-always-on;
+				regulator-boot-on;
+				regulator-name = "h_5v";
+				regulator-state-mem {
+					regulator-on-in-suspend;
+				};
+			};
 		};
 	};
 };
@@ -334,6 +357,7 @@
 
 &dsi0 {
 	status = "okay";
+	rockchip,lane-rate = <1000>;
 
 	panel: panel {
 		compatible = "simple-panel-dsi";
@@ -377,9 +401,7 @@
 };
 
 &tsadc {
-	rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
 	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
-	pinctrl-1 = <&otp_gpio>;
 };
 
 &pinctrl {

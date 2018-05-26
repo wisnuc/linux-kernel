@@ -143,6 +143,7 @@
 #define SCLK_I2S1_DIV			175
 #define SCLK_I2S2_DIV			176
 #define SCLK_SPDIF_DIV			177
+#define SCLK_CIF_OUT_SRC		178
 
 #define DCLK_VOP0			180
 #define DCLK_VOP1			181
@@ -367,6 +368,7 @@
 #define SCLK_I2C0_PMU			9
 #define SCLK_I2C4_PMU			10
 #define SCLK_I2C8_PMU			11
+#define SCLK_UART4_SRC			12
 
 #define PCLK_SRC_PMU			19
 #define PCLK_PMU			20

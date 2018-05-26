@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 
 #ifndef _wl_escan_
 #define _wl_escan_
@@ -68,8 +69,8 @@ int wl_escan_set_scan(
 );
 int wl_escan_get_scan(struct net_device *dev,	struct iw_request_info *info,
 	struct iw_point *dwrq, char *extra);
-int wl_escan_attach(struct net_device *dev, void * dhdp);
-void wl_escan_detach(void);
+int wl_escan_attach(struct net_device *dev, dhd_pub_t *dhdp);
+void wl_escan_detach(dhd_pub_t *dhdp);
 
 #endif /* _wl_escan_ */
 

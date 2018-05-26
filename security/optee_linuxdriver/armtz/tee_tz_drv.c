@@ -33,6 +33,7 @@
 #include <arm_common/teesmc_st.h>
 
 #include <linux/cpumask.h>
+#include <linux/of.h>
 
 #include "tee_mem.h"
 #include "tee_tz_op.h"
@@ -384,7 +385,7 @@ static u32 handle_rpc(struct tee_tz *ptee, struct smc_param *param)
 
 	switch (TEESMC_RETURN_GET_RPC_FUNC(param->a0)) {
 	case TEESMC_RPC_FUNC_ALLOC_ARG:
-		param->a1 = tee_shm_pool_alloc(DEV, ptee->shm_pool,
+		param->a1 = rk_tee_shm_pool_alloc(DEV, ptee->shm_pool,
 					param->a1, 4);
 		break;
 	case TEESMC_RPC_FUNC_ALLOC_PAYLOAD:
@@ -392,7 +393,7 @@ static u32 handle_rpc(struct tee_tz *ptee, struct smc_param *param)
 		param->a2 = 0;
 		break;
 	case TEESMC_RPC_FUNC_FREE_ARG:
-		tee_shm_pool_free(DEV, ptee->shm_pool, param->a1, 0);
+		rk_tee_shm_pool_free(DEV, ptee->shm_pool, param->a1, 0);
 		break;
 	case TEESMC_RPC_FUNC_FREE_PAYLOAD:
 		/* Can't support payload shared memory with this interface */
@@ -518,7 +519,7 @@ static void *alloc_tee_arg(struct tee_tz *ptee, unsigned long *p, size_t l)
 		return NULL;
 
 	/* assume a 4 bytes aligned is sufficient */
-	*p = tee_shm_pool_alloc(DEV, ptee->shm_pool, l, ALLOC_ALIGN);
+	*p = rk_tee_shm_pool_alloc(DEV, ptee->shm_pool, l, ALLOC_ALIGN);
 	if (*p == 0)
 		return NULL;
 
@@ -536,7 +537,7 @@ static void free_tee_arg(struct tee_tz *ptee, unsigned long p)
 	BUG_ON(!CAPABLE(ptee->tee));
 
 	if (p)
-		tee_shm_pool_free(DEV, ptee->shm_pool, p, 0);
+		rk_tee_shm_pool_free(DEV, ptee->shm_pool, p, 0);
 
 	dev_dbg(DEV, "<\n");
 }
@@ -904,7 +905,7 @@ static struct tee_shm *tz_alloc(struct tee *tee, size_t size, uint32_t flags)
 
 	shm->size_alloc = ((size / SZ_4K) + 1) * SZ_4K;
 	shm->size_req = size;
-	shm->paddr = tee_shm_pool_alloc(tee->dev, ptee->shm_pool,
+	shm->paddr = rk_tee_shm_pool_alloc(tee->dev, ptee->shm_pool,
 					shm->size_alloc, ALLOC_ALIGN);
 	if (!shm->paddr) {
 		dev_err(tee->dev, "%s: cannot alloc memory, size 0x%lx\n",
@@ -916,7 +917,7 @@ static struct tee_shm *tz_alloc(struct tee *tee, size_t size, uint32_t flags)
 	if (!shm->kaddr) {
 		dev_err(tee->dev, "%s: p2v(%pad)=0\n", __func__,
 			&shm->paddr);
-		tee_shm_pool_free(tee->dev, ptee->shm_pool, shm->paddr, NULL);
+		rk_tee_shm_pool_free(tee->dev, ptee->shm_pool, shm->paddr, NULL);
 		devm_kfree(tee->dev, shm);
 		return ERR_PTR(-EFAULT);
 	}
@@ -945,7 +946,7 @@ static void tz_free(struct tee_shm *shm)
 
 	dev_dbg(tee->dev, "%s: shm=%p\n", __func__, shm);
 
-	ret = tee_shm_pool_free(tee->dev, ptee->shm_pool, shm->paddr, &size);
+	ret = rk_tee_shm_pool_free(tee->dev, ptee->shm_pool, shm->paddr, &size);
 	if (!ret) {
 		devm_kfree(tee->dev, shm);
 		shm = NULL;
@@ -1182,6 +1183,38 @@ out:
 	return ret;
 }
 
+static int rk_set_uart_port(struct tee_tz *ptee)
+{
+	struct smc_param param = {0};
+	struct device_node *np;
+	int serial_id;
+	int ret = 0;
+
+	np = of_find_node_by_name(NULL, "fiq-debugger");
+	if (!np)
+		return -ENODEV;
+
+	if (of_device_is_available(np)) {
+		if (of_property_read_u32(np, "rockchip,serial-id", &serial_id))
+			return -EINVAL;
+	} else {
+		serial_id = 0xffffffff;
+	}
+
+	dev_dbg(DEV, "optee set uart port id: %d\n", serial_id);
+	param.a0 = TEESMC32_ROCKCHIP_FASTCALL_SET_UART_PORT;
+	param.a1 = serial_id;
+
+	mutex_lock(&ptee->mutex);
+#ifdef SWITCH_CPU0_DEBUG
+	ret = tee_smc_call_switchcpu0(&param);
+#else
+	tee_smc_call(&param);
+#endif
+	mutex_unlock(&ptee->mutex);
+
+	return ret;
+}
 
 /******************************************************************************/
 
@@ -1200,6 +1233,8 @@ static int tz_start(struct tee *tee)
 	ptee = tee->priv;
 	BUG_ON(ptee->started);
 	ptee->started = true;
+
+	rk_set_uart_port(ptee);
 
 	ret = configure_shm(ptee);
 	if (ret)

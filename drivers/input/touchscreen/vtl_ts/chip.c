@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 
 #include <linux/types.h>
 #include <linux/i2c.h>
@@ -100,7 +101,7 @@ static int chip_i2c_read(struct i2c_client *client, __u16 addr, __u8 *buf, __u16
 	msgs.len = len;
 	msgs.buf = buf;
 	//#if(PLATFORM == ROCKCHIP)
-	msgs.scl_rate = TS_I2C_SPEED;
+	//msgs.scl_rate = TS_I2C_SPEED;
 	//#endif
 
 	ret = i2c_transfer(client->adapter, &msgs, 1);
@@ -122,7 +123,7 @@ static int chip_i2c_write(struct i2c_client *client, __u16 addr, __u8 *buf, __u1
 	msgs.len = len;
 	msgs.buf = buf;
 	//#if(PLATFORM == ROCKCHIP)
-	msgs.scl_rate = TS_I2C_SPEED;
+	//msgs.scl_rate = TS_I2C_SPEED;
 	//#endif
 
 	ret = i2c_transfer(client->adapter, &msgs, 1);
@@ -560,7 +561,7 @@ int chip_update(struct i2c_client *client)
 		{
 			vtl_ts_hw_reset();
 			continue;
-		};
+		}
 		chip_get_fwchksum(client,&fw_checksum);
 		printk("bin_checksum = %x,fw_checksum = %x,cnt = %d\n",bin_checksum,fw_checksum,cnt);
 	}

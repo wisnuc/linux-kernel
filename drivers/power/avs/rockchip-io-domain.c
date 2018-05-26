@@ -39,9 +39,17 @@
 #define MAX_VOLTAGE_1_8		1980000
 #define MAX_VOLTAGE_3_3		3600000
 
+#define PX30_IO_VSEL			0x180
+#define PX30_IO_VSEL_VCCIO6_SRC		BIT(0)
+#define PX30_IO_VSEL_VCCIO6_SUPPLY_NUM	1
+
 #define RK3288_SOC_CON2			0x24c
 #define RK3288_SOC_CON2_FLASH0		BIT(7)
 #define RK3288_SOC_FLASH_SUPPLY_NUM	2
+
+#define RK3308_SOC_CON0			0x300
+#define RK3308_SOC_CON0_VCCIO3		BIT(8)
+#define RK3308_SOC_VCCIO3_SUPPLY_NUM	3
 
 #define RK3328_SOC_CON4			0x410
 #define RK3328_SOC_CON4_VCCIO2		BIT(7)
@@ -155,6 +163,25 @@ static int rockchip_iodomain_notify(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static void px30_iodomain_init(struct rockchip_iodomain *iod)
+{
+	int ret;
+	u32 val;
+
+	/* if no VCCIO0 supply we should leave things alone */
+	if (!iod->supplies[PX30_IO_VSEL_VCCIO6_SUPPLY_NUM].reg)
+		return;
+
+	/*
+	 * set vccio0 iodomain to also use this framework
+	 * instead of a special gpio.
+	 */
+	val = PX30_IO_VSEL_VCCIO6_SRC | (PX30_IO_VSEL_VCCIO6_SRC << 16);
+	ret = regmap_write(iod->grf, PX30_IO_VSEL, val);
+	if (ret < 0)
+		dev_warn(iod->dev, "couldn't update vccio0 ctrl\n");
+}
+
 static void rk3288_iodomain_init(struct rockchip_iodomain *iod)
 {
 	int ret;
@@ -172,6 +199,25 @@ static void rk3288_iodomain_init(struct rockchip_iodomain *iod)
 	ret = regmap_write(iod->grf, RK3288_SOC_CON2, val);
 	if (ret < 0)
 		dev_warn(iod->dev, "couldn't update flash0 ctrl\n");
+}
+
+static void rk3308_iodomain_init(struct rockchip_iodomain *iod)
+{
+	int ret;
+	u32 val;
+
+	/* if no vccio3 supply we should leave things alone */
+	if (!iod->supplies[RK3308_SOC_VCCIO3_SUPPLY_NUM].reg)
+		return;
+
+	/*
+	 * set vccio3 iodomain to also use this framework
+	 * instead of a special gpio.
+	 */
+	val = RK3308_SOC_CON0_VCCIO3 | (RK3308_SOC_CON0_VCCIO3 << 16);
+	ret = regmap_write(iod->grf, RK3308_SOC_CON0, val);
+	if (ret < 0)
+		dev_warn(iod->dev, "couldn't update vccio3 vsel ctrl\n");
 }
 
 static void rk3328_iodomain_init(struct rockchip_iodomain *iod)
@@ -250,6 +296,43 @@ static void rk3399_pmu_iodomain_init(struct rockchip_iodomain *iod)
 		dev_warn(iod->dev, "couldn't update pmu io iodomain ctrl\n");
 }
 
+static const struct rockchip_iodomain_soc_data soc_data_px30 = {
+	.grf_offset = 0x180,
+	.supply_names = {
+		NULL,
+		"vccio6",
+		"vccio1",
+		"vccio2",
+		"vccio3",
+		"vccio4",
+		"vccio5",
+		"vccio-oscgpi",
+	},
+	.init = px30_iodomain_init,
+};
+
+static const struct rockchip_iodomain_soc_data soc_data_px30_pmu = {
+	.grf_offset = 0x100,
+	.supply_names = {
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		"pmuio1",
+		"pmuio2",
+	},
+};
+
 /*
  * On the rk3188 the io-domains are handled by a shared register with the
  * lower 8 bits being still being continuing drive-strength settings.
@@ -301,6 +384,19 @@ static const struct rockchip_iodomain_soc_data soc_data_rk3288 = {
 		"gpio1830",	/* APIO2_VDD */
 	},
 	.init = rk3288_iodomain_init,
+};
+
+static const struct rockchip_iodomain_soc_data soc_data_rk3308 = {
+	.grf_offset = 0x300,
+	.supply_names = {
+		"vccio0",
+		"vccio1",
+		"vccio2",
+		"vccio3",
+		"vccio4",
+		"vccio5",
+	},
+	.init = rk3308_iodomain_init,
 };
 
 static const struct rockchip_iodomain_soc_data soc_data_rk3328 = {
@@ -387,7 +483,45 @@ static const struct rockchip_iodomain_soc_data soc_data_rk3399_pmu = {
 	.init = rk3399_pmu_iodomain_init,
 };
 
+static const struct rockchip_iodomain_soc_data soc_data_rv1108 = {
+	.grf_offset = 0x404,
+	.supply_names = {
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		"vccio1",
+		"vccio2",
+		"vccio3",
+		"vccio5",
+		"vccio6",
+	},
+
+};
+
+static const struct rockchip_iodomain_soc_data soc_data_rv1108_pmu = {
+	.grf_offset = 0x104,
+	.supply_names = {
+		"pmu",
+	},
+};
+
 static const struct of_device_id rockchip_iodomain_match[] = {
+	{
+		.compatible = "rockchip,px30-io-voltage-domain",
+		.data = (void *)&soc_data_px30
+	},
+	{
+		.compatible = "rockchip,px30-pmu-io-voltage-domain",
+		.data = (void *)&soc_data_px30_pmu
+	},
 	{
 		.compatible = "rockchip,rk3188-io-voltage-domain",
 		.data = (void *)&soc_data_rk3188
@@ -399,6 +533,10 @@ static const struct of_device_id rockchip_iodomain_match[] = {
 	{
 		.compatible = "rockchip,rk3288-io-voltage-domain",
 		.data = (void *)&soc_data_rk3288
+	},
+	{
+		.compatible = "rockchip,rk3308-io-voltage-domain",
+		.data = (void *)&soc_data_rk3308
 	},
 	{
 		.compatible = "rockchip,rk3328-io-voltage-domain",
@@ -423,6 +561,14 @@ static const struct of_device_id rockchip_iodomain_match[] = {
 	{
 		.compatible = "rockchip,rk3399-pmu-io-voltage-domain",
 		.data = (void *)&soc_data_rk3399_pmu
+	},
+	{
+		.compatible = "rockchip,rv1108-io-voltage-domain",
+		.data = (void *)&soc_data_rv1108
+	},
+	{
+		.compatible = "rockchip,rv1108-pmu-io-voltage-domain",
+		.data = (void *)&soc_data_rv1108_pmu
 	},
 	{ /* sentinel */ },
 };

@@ -58,18 +58,10 @@
 		pwms = <&pwm1 0 30518 0>; /* 1 / 30518 ns = 32.7675 KHz */
 	};
 
-	hdmi_sound: hdmi-sound {
-		status = "okay";
-		compatible = "simple-audio-card";
-		simple-audio-card,format = "i2s";
-		simple-audio-card,mclk-fs = <256>;
-		simple-audio-card,name = "rockchip,hdmi";
-		simple-audio-card,cpu {
-			sound-dai = <&i2s_8ch>;
-		};
-		simple-audio-card,codec {
-			sound-dai = <&hdmi>;
-		};
+	sound {
+		compatible = "rockchip,rk3368-hdmi-analog";
+		rockchip,cpu = <&i2s_8ch>;
+		rockchip,codec = <&rk1000_codec>, <&hdmi>;
 	};
 
 	keys: gpio-keys {
@@ -131,10 +123,11 @@
 		regulator-boot-on;
 	};
 
-	clkin_gmac: external-gmac-clock {
+	ext_gmac: gmac-clk {
 		compatible = "fixed-clock";
 		clock-frequency = <125000000>;
-		clock-output-names = "clkin_gmac";
+		/* clock-frequency = <50000000>; */
+		clock-output-names = "ext_gmac";
 		#clock-cells = <0>;
 	};
 
@@ -180,6 +173,35 @@
 	};
 };
 
+&dfi {
+	status = "okay";
+};
+
+&dmc {
+	system-status-freq = <
+		/*system status         freq(KHz)*/
+		SYS_STATUS_NORMAL	528000
+		SYS_STATUS_REBOOT	600000
+		SYS_STATUS_SUSPEND	192000
+		SYS_STATUS_VIDEO_1080P	400000
+		SYS_STATUS_VIDEO_4K	800000
+		SYS_STATUS_PERFORMANCE	800000
+		SYS_STATUS_BOOST	400000
+		SYS_STATUS_DUALVIEW	400000
+		SYS_STATUS_ISP		400000
+	>;
+	center-supply = <&vdd_gpu>;
+	auto-freq-en = <0>;
+	status = "okay";
+};
+
+&dmc_opp_table {
+	opp-800000000 {
+		opp-hz = /bits/ 64 <800000000>;
+		opp-microvolt = <1175000>;
+	};
+};
+
 &i2s_8ch {
 	status = "okay";
 	rockchip,i2s-broken-burst-len;
@@ -219,11 +241,11 @@
 	phy-supply = <&vcc_phy>;
 	phy-mode = "rmii";
 	clock_in_out = "output";
-	snps,reset-gpio = <&gpio3 12 0>;
+	snps,reset-gpio = <&gpio3 12 GPIO_ACTIVE_LOW>;
 	snps,reset-active-low;
 	snps,reset-delays-us = <0 50000 50000>;
-	//assigned-clocks = <&cru SCLK_RMII_SRC>;
-	//assigned-clock-parents = <&clkin_gmac>;
+	/* assigned-clocks = <&cru SCLK_MAC>; */
+	/* assigned-clock-parents = <&ext_gmac>; */
 	pinctrl-names = "default";
 	pinctrl-0 = <&rmii_pins>;
 	tx_delay = <0x30>;
@@ -442,7 +464,7 @@
 		clocks = <&cru SCLK_I2S_8CH_OUT>;
 		clock-names = "mclk";
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2s_8ch_bus>;
+		pinctrl-0 = <&i2s_8ch_mclk>;
 	};
 
 	rk1000-tve@42 {
@@ -452,20 +474,31 @@
 		rockchip,data-width = <24>;
 		rockchip,output = "rgb";
 		rockchip,ctl = <&rk1000_ctl>;
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			tve_in: port@0 {
-				reg = <0>;
-				tve_in_lvds: endpoint {
-					remote-endpoint = <&lvds_out_tve>;
-				};
+		#address-cells = <1>;
+		#size-cells = <0>;
+		tve_in: port@0 {
+			reg = <0>;
+			tve_in_lvds: endpoint {
+				remote-endpoint = <&lvds_out_tve>;
 			};
 		};
+	};
+
+	rk1000_codec: rk1000-codec@60 {
+		compatible = "rockchip,rk1000-codec";
+		reg = <0x60>;
+		#sound-dai-cells = <0>;
+		rockchip,ctl = <&rk1000_ctl>;
+		rockchip,spk-en-gpio = <&gpio3 31 GPIO_ACTIVE_LOW>;
+		rockchip,pa-en-time-ms = <5000>;
+		status = "okay";
 	};
 };
 
 &lvds {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&lcdc_lcdc>;
+	pinctrl-1 = <&lcdc_gpio>;
 	status = "okay";
 
 	ports {
@@ -639,6 +672,10 @@
 	status = "okay";
 };
 
+&route_lvds {
+	status = "okay";
+};
+
 &hdmi {
 	status = "okay";
 	#sound-dai-cells = <0>;
@@ -719,7 +756,7 @@
 &pwm3 {
 	status = "okay";
 
-	interrupts = <GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH 0>;
+	interrupts = <GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH>;
 	compatible = "rockchip,remotectl-pwm";
 	remote_pwm_id = <3>;
 	handle_cpu_id = <1>;

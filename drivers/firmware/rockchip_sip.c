@@ -15,6 +15,9 @@
 #include <linux/io.h>
 #include <linux/rockchip/rockchip_sip.h>
 #include <asm/cputype.h>
+#ifdef CONFIG_ARM
+#include <asm/psci.h>
+#endif
 #include <asm/smp_plat.h>
 #include <uapi/linux/psci.h>
 #include <linux/ptrace.h>
@@ -59,6 +62,14 @@ int sip_smc_set_suspend_mode(u32 ctrl, u32 config1, u32 config2)
 
 	res = __invoke_sip_fn_smc(SIP_SUSPEND_MODE, ctrl, config1, config2);
 	return res.a0;
+}
+
+struct arm_smccc_res sip_smc_get_suspend_info(u32 info)
+{
+	struct arm_smccc_res res;
+
+	res = __invoke_sip_fn_smc(SIP_SUSPEND_MODE, info, 0, 0);
+	return res;
 }
 
 int sip_smc_virtual_poweroff(void)
@@ -122,6 +133,23 @@ error:
 struct arm_smccc_res sip_smc_mcu_el3fiq(u32 arg0, u32 arg1, u32 arg2)
 {
 	return __invoke_sip_fn_smc(SIP_MCU_EL3FIQ_CFG, arg0, arg1, arg2);
+}
+
+struct arm_smccc_res sip_smc_vpu_reset(u32 arg0, u32 arg1, u32 arg2)
+{
+	struct arm_smccc_res res;
+
+	res = __invoke_sip_fn_smc(PSCI_SIP_VPU_RESET, arg0, arg1, arg2);
+	return res;
+}
+EXPORT_SYMBOL_GPL(sip_smc_vpu_reset);
+
+struct arm_smccc_res sip_smc_soc_bus_div(u32 arg0, u32 arg1, u32 arg2)
+{
+	struct arm_smccc_res res;
+
+	res = __invoke_sip_fn_smc(RK_SIP_SOC_BUS_DIV, arg0, arg1, arg2);
+	return res;
 }
 
 /************************** fiq debugger **************************************/
@@ -307,6 +335,9 @@ void sip_fiq_debugger_enable_fiq(bool enable, uint32_t tgt_cpu)
 static __init int sip_implement_version_init(void)
 {
 	struct arm_smccc_res res;
+
+	if (!psci_smp_available())
+		return 0;
 
 	res = __invoke_sip_fn_smc(SIP_SIP_VERSION, SIP_IMPLEMENT_V2,
 				  SECURE_REG_WR, 0);

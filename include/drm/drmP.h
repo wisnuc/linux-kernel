@@ -214,6 +214,22 @@ void drm_printk(const char *level, unsigned int category,
 #define DRM_ERROR_RATELIMITED(fmt, ...)					\
 	DRM_DEV_ERROR_RATELIMITED(NULL, fmt, ##__VA_ARGS__)
 
+<<<<<<< HEAD
+=======
+#define DRM_DEV_INFO(dev, fmt, ...)					\
+	drm_dev_printk(dev, KERN_INFO, DRM_UT_NONE, __func__, "", fmt,	\
+		       ##__VA_ARGS__)
+
+#define DRM_DEV_INFO_ONCE(dev, fmt, ...)				\
+({									\
+	static bool __print_once __read_mostly;				\
+	if (!__print_once) {						\
+		__print_once = true;					\
+		DRM_DEV_INFO(dev, fmt, ##__VA_ARGS__);			\
+	}								\
+})
+
+>>>>>>> upstream/release-4.4
 /**
  * Debug output.
  *
@@ -343,6 +359,7 @@ struct drm_ioctl_desc {
 
 /* Event queued up for userspace to read */
 struct drm_pending_event {
+	struct completion *completion;
 	struct drm_event *event;
 	struct list_head link;
 	struct drm_file *file_priv;
@@ -992,6 +1009,14 @@ extern int drm_new_set_master(struct drm_device *dev, struct drm_file *fpriv);
 
 				/* Mapping support (drm_vm.h) */
 extern unsigned int drm_poll(struct file *filp, struct poll_table_struct *wait);
+int drm_event_reserve_init(struct drm_device *dev,
+			   struct drm_file *file_priv,
+			   struct drm_pending_event *p,
+			   struct drm_event *e);
+void drm_event_cancel_free(struct drm_device *dev,
+			   struct drm_pending_event *p);
+void drm_send_event_locked(struct drm_device *dev, struct drm_pending_event *e);
+void drm_send_event(struct drm_device *dev, struct drm_pending_event *e);
 
 /* Misc. IOCTL support (drm_ioctl.c) */
 int drm_noop(struct drm_device *dev, void *data,

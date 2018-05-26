@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __PLAT_BOARD_H
 #define __PLAT_BOARD_H
 
@@ -30,6 +31,7 @@ struct rksdmmc_gpio_wifi_moudle {
     bool wifi_power_remain;
     struct rksdmmc_pmu    mregulator;
     struct rksdmmc_pmu    ioregulator;
+    struct rksdmmc_gpio   vbat_n;
     struct rksdmmc_gpio   power_n;  //PMU_EN  
     struct rksdmmc_gpio   reset_n;  //SYSRET_B, DAIRST 
     struct rksdmmc_gpio   vddio;
@@ -49,6 +51,7 @@ enum {
     WIFI_AP6210,
     WIFI_AP6212,
     WIFI_AP6234,
+    WIFI_AP6255,
     WIFI_AP6330,
     WIFI_AP6335,
     WIFI_AP6354,
@@ -70,6 +73,7 @@ enum {
     WIFI_RTL8812AU,
     WIFI_RTL_SERIES,
     WIFI_ESP8089,
+    WIFI_MVL88W8977,
     TYPE_MAX,
 };
 
@@ -79,6 +83,7 @@ int rockchip_wifi_ref_voltage(int on);
 int rockchip_wifi_power(int on);
 int rockchip_wifi_set_carddetect(int val);
 int rockchip_wifi_get_oob_irq(void);
+int rockchip_wifi_get_oob_irq_flag(void);
 int rockchip_wifi_reset(int on);
 int rockchip_wifi_mac_addr(unsigned char *buf);
 void *rockchip_wifi_country_code(char *ccode);

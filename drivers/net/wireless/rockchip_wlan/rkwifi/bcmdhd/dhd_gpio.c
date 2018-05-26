@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 
 #include <osl.h>
 #include <dhd_linux.h>
@@ -26,7 +27,7 @@ static int gpio_wl_host_wake = -1; // WL_HOST_WAKE is output pin of WLAN module
 #endif
 
 static int
-dhd_wlan_set_power(bool on
+dhd_wlan_set_power(int on
 #ifdef BUS_POWER_RESTORE
 , wifi_adapter_info_t *adapter
 #endif /* BUS_POWER_RESTORE */
@@ -65,6 +66,8 @@ dhd_wlan_set_power(bool on
 		}
 #endif /* BCMPCIE */
 #endif /* BUS_POWER_RESTORE */
+		/* Lets customer power to get stable */
+		mdelay(100);
 	} else {
 #if defined(BUS_POWER_RESTORE)
 #if defined(BCMSDIO)
@@ -102,7 +105,7 @@ static int dhd_wlan_set_reset(int onoff)
 	return 0;
 }
 
-static int dhd_wlan_set_carddetect(bool present)
+static int dhd_wlan_set_carddetect(int present)
 {
 	int err = 0;
 
@@ -166,24 +169,20 @@ static int dhd_wlan_get_mac_addr(unsigned char *buf)
 	return err;
 }
 
-#if !defined(WL_WIRELESS_EXT)
-struct cntry_locales_custom {
-	char iso_abbrev[WLC_CNTRY_BUF_SZ];	/* ISO 3166-1 country abbreviation */
-	char custom_locale[WLC_CNTRY_BUF_SZ];	/* Custom firmware locale */
-	int32 custom_locale_rev;		/* Custom local revisin default -1 */
-};
-#endif
-
 static struct cntry_locales_custom brcm_wlan_translate_custom_table[] = {
 	/* Table should be filled out based on custom platform regulatory requirement */
+#ifdef EXAMPLE_TABLE
 	{"",   "XT", 49},  /* Universal if Country code is unknown or empty */
 	{"US", "US", 0},
+#endif /* EXMAPLE_TABLE */
 };
 
 #ifdef CUSTOM_FORCE_NODFS_FLAG
 struct cntry_locales_custom brcm_wlan_translate_nodfs_table[] = {
+#ifdef EXAMPLE_TABLE
 	{"",   "XT", 50},  /* Universal if Country code is unknown or empty */
 	{"US", "US", 0},
+#endif /* EXMAPLE_TABLE */
 };
 #endif
 
@@ -245,6 +244,7 @@ int dhd_wlan_init_gpio(void)
 #ifdef CUSTOMER_OOB
 	int host_oob_irq = -1;
 	uint host_oob_irq_flags = 0;
+	int irq_flags = -1;
 #endif
 
 	/* Please check your schematic and fill right GPIO number which connected to
@@ -290,11 +290,14 @@ int dhd_wlan_init_gpio(void)
 	printf("%s: host_oob_irq: %d\n", __FUNCTION__, host_oob_irq);
 
 #ifdef HW_OOB
-#ifdef HW_OOB_LOW_LEVEL
-	host_oob_irq_flags = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL | IORESOURCE_IRQ_SHAREABLE;
-#else
-	host_oob_irq_flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE;
-#endif
+	host_oob_irq_flags = IORESOURCE_IRQ | IORESOURCE_IRQ_SHAREABLE;
+	irq_flags = rockchip_wifi_get_oob_irq_flag();
+	if (irq_flags == 1)
+		host_oob_irq_flags |= IORESOURCE_IRQ_HIGHLEVEL;
+	else if (irq_flags == 0)
+		host_oob_irq_flags |= IORESOURCE_IRQ_LOWLEVEL;
+	else
+		pr_warn("%s: unknown oob irqflags !\n", __func__);
 #else
 	host_oob_irq_flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE | IORESOURCE_IRQ_SHAREABLE;
 #endif

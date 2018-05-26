@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __USBDEV_RK_H
 #define __USBDEV_RK_H
 
@@ -22,10 +23,7 @@
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
 #include <linux/rk_keys.h>
-#include <linux/rockchip/cru.h>
-#include <linux/rockchip/grf.h>
 #include <linux/rockchip/cpu.h>
-#include <linux/rockchip/iomap.h>
 
 #include "usbdev_grf_regs.h"
 #include "usbdev_bc.h"

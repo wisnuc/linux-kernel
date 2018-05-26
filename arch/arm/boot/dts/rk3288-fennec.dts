@@ -42,6 +42,7 @@
 
 #include <dt-bindings/clock/rockchip,rk808.h>
 #include "rk3288.dtsi"
+#include "rk3288-linux.dtsi"
 
 / {
 	model = "Rockchip RK3288 Fennec Board";
@@ -421,6 +422,8 @@
 		hp-det-gpio = <&gpio5 19 GPIO_ACTIVE_HIGH>;
 		clock-names = "mclk";
 		clocks = <&cru SCLK_I2S0_OUT>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2s0_mclk>;
 		#sound-dai-cells = <0>;
 	};
 };
@@ -459,7 +462,6 @@
 };
 
 &tsadc {
-	rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
 	rockchip,hw-tshut-polarity = <0>; /* tshut polarity 0:LOW 1:HIGH */
 	status = "okay";
 };

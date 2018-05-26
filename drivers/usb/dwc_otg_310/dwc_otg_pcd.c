@@ -1486,7 +1486,7 @@ int dwc_otg_pcd_ep_enable(dwc_otg_pcd_t *pcd,
 	num = UE_GET_ADDR(desc->bEndpointAddress);
 	dir = UE_GET_DIR(desc->bEndpointAddress);
 
-	if (!desc->wMaxPacketSize) {
+	if (!UGETW(desc->wMaxPacketSize)) {
 		DWC_WARN("bad maxpacketsize\n");
 		retval = -DWC_E_INVALID;
 		goto out;
@@ -1763,7 +1763,6 @@ static void dwc_otg_pcd_ep_stop_transfer(dwc_otg_core_if_t
 					diepint, diepint.d32);
 		}
 
-		depctl.d32 = 0;
 		depctl.b.epdis = 1;
 		DWC_WRITE_REG32(&core_if->dev_if->
 				in_ep_regs[ep->num]->diepctl,
@@ -1805,7 +1804,6 @@ static void dwc_otg_pcd_ep_stop_transfer(dwc_otg_core_if_t
 					->gintsts, gintsts.d32);
 		}
 
-		depctl.d32 = 0;
 		depctl.b.epdis = 1;
 		depctl.b.snak = 1;
 		DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[ep->num]->
@@ -2261,11 +2259,14 @@ int dwc_otg_pcd_ep_queue(dwc_otg_pcd_t *pcd, void *ep_handle,
 	req->sent_zlp = zero;
 	req->priv = req_handle;
 	req->dw_align_buf = NULL;
-	if ((dma_buf & 0x3) && GET_CORE_IF(pcd)->dma_enable
-	    && !GET_CORE_IF(pcd)->dma_desc_enable)
+	if ((dma_buf & 0x3) && GET_CORE_IF(pcd)->dma_enable &&
+	    !GET_CORE_IF(pcd)->dma_desc_enable) {
 		req->dw_align_buf = DWC_DEV_DMA_ALLOC_ATOMIC(buflen,
 							     &req->
 							     dw_align_buf_dma);
+		if (req->dw_align_buf && ep->dwc_ep.is_in)
+			dwc_memcpy(req->dw_align_buf, buf, buflen);
+	}
 	DWC_SPINLOCK_IRQSAVE(pcd->lock, &flags);
 
 	/*
@@ -2275,7 +2276,7 @@ int dwc_otg_pcd_ep_queue(dwc_otg_pcd_t *pcd, void *ep_handle,
 	 * (odd/even) start transfer
 	 */
 	if (ep->dwc_ep.type == DWC_OTG_EP_TYPE_ISOC) {
-		if (req != 0) {
+		if (req) {
 			depctl_data_t depctl = {.d32 =
 				    DWC_READ_REG32(&pcd->core_if->
 						   dev_if->in_ep_regs[ep->
@@ -2376,9 +2377,6 @@ int dwc_otg_pcd_ep_queue(dwc_otg_pcd_t *pcd, void *ep_handle,
 
 				/* Setup and start the Transfer */
 				if (req->dw_align_buf) {
-					if (ep->dwc_ep.is_in)
-						dwc_memcpy(req->dw_align_buf,
-							   buf, buflen);
 					ep->dwc_ep.dma_addr =
 					    req->dw_align_buf_dma;
 					ep->dwc_ep.start_xfer_buff =
@@ -2435,7 +2433,7 @@ int dwc_otg_pcd_ep_queue(dwc_otg_pcd_t *pcd, void *ep_handle,
 		}
 	}
 
-	if (req != 0) {
+	if (req) {
 		++pcd->request_pending;
 		DWC_CIRCLEQ_INSERT_TAIL(&ep->queue, req, queue_entry);
 		if (ep->dwc_ep.is_in && ep->stopped

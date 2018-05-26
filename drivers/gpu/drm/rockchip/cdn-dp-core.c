@@ -28,6 +28,7 @@
 #include <linux/reset.h>
 #include <linux/mfd/syscon.h>
 #include <linux/phy/phy.h>
+#include <uapi/linux/videodev2.h>
 
 #include <sound/hdmi-codec.h>
 
@@ -745,6 +746,8 @@ static int cdn_dp_encoder_atomic_check(struct drm_encoder *encoder,
 	s->output_type = DRM_MODE_CONNECTOR_DisplayPort;
 	s->bus_format = MEDIA_BUS_FMT_RGB888_1X24;
 	s->tv_state = &conn_state->tv;
+	s->eotf = TRADITIONAL_GAMMA_SDR;
+	s->color_space = V4L2_COLORSPACE_DEFAULT;
 
 	return 0;
 }
@@ -1187,7 +1190,7 @@ static const struct component_ops cdn_dp_component_ops = {
 	.unbind = cdn_dp_unbind,
 };
 
-int cdn_dp_suspend(struct device *dev)
+static int cdn_dp_suspend(struct device *dev)
 {
 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
 	int ret = 0;
@@ -1201,7 +1204,7 @@ int cdn_dp_suspend(struct device *dev)
 	return ret;
 }
 
-int cdn_dp_resume(struct device *dev)
+static int cdn_dp_resume(struct device *dev)
 {
 	struct cdn_dp_device *dp = dev_get_drvdata(dev);
 

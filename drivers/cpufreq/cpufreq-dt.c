@@ -28,6 +28,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
+#ifdef CONFIG_ARCH_ROCKCHIP
+#include <soc/rockchip/rockchip_opp_select.h>
+#endif
 
 #define MAX_CLUSTERS		2
 
@@ -224,6 +227,7 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 				dev_pm_opp_of_remove_table(cpu_dev);
 		}
 	}
+	rockchip_adjust_opp_by_irdrop(cpu_dev);
 #else
 	dev_pm_opp_of_cpumask_add_table(policy->cpus);
 #endif
@@ -307,6 +311,13 @@ static int cpufreq_init(struct cpufreq_policy *policy)
          */
 	policy->up_transition_delay_us = transition_latency / NSEC_PER_USEC;
 	policy->down_transition_delay_us = 50000; /* 50ms */
+
+	if (check_init < MAX_CLUSTERS) {
+		ret = dev_pm_opp_check_initial_rate(cpu_dev, &cur_freq);
+		if (!ret)
+			policy->cur = cur_freq / 1000;
+		check_init++;
+	}
 
 	return 0;
 

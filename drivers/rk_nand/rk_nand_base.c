@@ -7,34 +7,29 @@
  * (at your option) any later version.
  */
 
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/slab.h>
+#include <asm/cacheflush.h>
+#include <linux/bootmem.h>
+#include <linux/clk.h>
+#include <linux/debugfs.h>
 #include <linux/dma-mapping.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
-#include <linux/bootmem.h>
-#include <asm/cacheflush.h>
-#include <linux/platform_device.h>
-#include <linux/clk.h>
-#include <linux/uaccess.h>
+#include <linux/kernel.h>
+#include <linux/miscdevice.h>
+#include <linux/module.h>
 #ifdef CONFIG_OF
 #include <linux/of.h>
 #endif
+#include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
+#include <linux/slab.h>
+#include <linux/uaccess.h>
+
 #include "rk_nand_blk.h"
 #include "rk_ftl_api.h"
+#include "rk_nand_base.h"
 
-#define RKNAND_VERSION_AND_DATE  "rknandbase v1.1 2016-11-08"
-
-struct rk_nandc_info {
-	int	id;
-	void __iomem	*reg_base;
-	int	irq;
-	int	clk_rate;
-	struct clk	*clk;	/* flash clk*/
-	struct clk	*hclk;	/* nandc clk*/
-	struct clk	*gclk;  /* flash clk gate*/
-};
+#define RKNAND_VERSION_AND_DATE  "rknandbase v1.2 2018-05-08"
 
 static struct rk_nandc_info g_nandc_info[2];
 struct device *g_nand_device;
@@ -151,6 +146,38 @@ unsigned long rk_copy_to_user(void __user *to, const void *from,
 			      unsigned long n)
 {
 	return copy_to_user(to, from, n);
+}
+
+static const struct file_operations rknand_sys_storage_fops = {
+	.compat_ioctl = rknand_sys_storage_ioctl,
+	.unlocked_ioctl = rknand_sys_storage_ioctl,
+};
+
+static struct miscdevice rknand_sys_storage_dev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name  = "rknand_sys_storage",
+	.fops  = &rknand_sys_storage_fops,
+};
+
+int rknand_sys_storage_init(void)
+{
+	return misc_register(&rknand_sys_storage_dev);
+}
+
+static const struct file_operations rknand_vendor_storage_fops = {
+	.compat_ioctl	= rk_ftl_vendor_storage_ioctl,
+	.unlocked_ioctl = rk_ftl_vendor_storage_ioctl,
+};
+
+static struct miscdevice rknand_vender_storage_dev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name  = "vendor_storage",
+	.fops  = &rknand_vendor_storage_fops,
+};
+
+int rknand_vendor_storage_init(void)
+{
+	return misc_register(&rknand_vender_storage_dev);
 }
 
 int rk_nand_schedule_enable_config(int en)
@@ -284,7 +311,7 @@ int rk_nandc_irq_init(void)
 	nandc0_xfer_completed_flag = 0;
 	ret = rk_nandc_irq_config(0, 1, rk_nandc_interrupt);
 
-	if (g_nandc_info[1].reg_base != 0) {
+	if (!g_nandc_info[1].reg_base) {
 		nandc1_ready_completed_flag = 0;
 		nandc1_xfer_completed_flag = 0;
 		rk_nandc_irq_config(1, 1, rk_nandc_interrupt);
@@ -294,12 +321,10 @@ int rk_nandc_irq_init(void)
 
 int rk_nandc_irq_deinit(void)
 {
-	int ret = 0;
-
 	rk_nandc_irq_config(0, 0, rk_nandc_interrupt);
-	if (g_nandc_info[1].reg_base != 0)
+	if (!g_nandc_info[1].reg_base)
 		rk_nandc_irq_config(1, 0, rk_nandc_interrupt);
-	return ret;
+	return 0;
 }
 
 static int rknand_probe(struct platform_device *pdev)
@@ -312,7 +337,7 @@ static int rknand_probe(struct platform_device *pdev)
 	g_nand_device = &pdev->dev;
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	membase = devm_ioremap_resource(&pdev->dev, mem);
-	if (membase == 0) {
+	if (!membase) {
 		dev_err(&pdev->dev, "no reg resource?\n");
 		return -1;
 	}
@@ -345,22 +370,27 @@ static int rknand_probe(struct platform_device *pdev)
 	g_nandc_info[id].clk = devm_clk_get(&pdev->dev, "clk_nandc");
 	g_nandc_info[id].gclk = devm_clk_get(&pdev->dev, "g_clk_nandc");
 
-	if (unlikely(IS_ERR(g_nandc_info[id].clk)) ||
-	    unlikely(IS_ERR(g_nandc_info[id].hclk))) {
-		dev_err(&pdev->dev, "rknand_probe get clk error\n");
-		return -1;
+	if (unlikely(IS_ERR(g_nandc_info[id].hclk))) {
+		dev_err(&pdev->dev, "rknand_probe get hclk error\n");
+		return PTR_ERR(g_nandc_info[id].hclk);
 	}
 
-	clk_set_rate(g_nandc_info[id].clk, 150 * 1000 * 1000);
-	g_nandc_info[id].clk_rate = clk_get_rate(g_nandc_info[id].clk);
-	clk_prepare_enable(g_nandc_info[id].clk);
+	if (!(IS_ERR(g_nandc_info[id].clk))) {
+		clk_set_rate(g_nandc_info[id].clk, 150 * 1000 * 1000);
+		g_nandc_info[id].clk_rate = clk_get_rate(g_nandc_info[id].clk);
+		clk_prepare_enable(g_nandc_info[id].clk);
+		dev_info(&pdev->dev,
+			 "rknand_probe clk rate = %d\n",
+			 g_nandc_info[id].clk_rate);
+	}
+
 	clk_prepare_enable(g_nandc_info[id].hclk);
 	if (!(IS_ERR(g_nandc_info[id].gclk)))
 		clk_prepare_enable(g_nandc_info[id].gclk);
 
-	dev_info(&pdev->dev,
-		 "rknand_probe clk rate = %d\n",
-		 g_nandc_info[id].clk_rate);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
+
 	return 0;
 }
 
@@ -395,6 +425,30 @@ void rknand_dev_cache_flush(void)
 	rknand_dev_flush();
 }
 
+static int rknand_pm_suspend(struct device *dev)
+{
+	if (rk_nand_suspend_state == 0) {
+		rk_nand_suspend_state = 1;
+		rknand_dev_suspend();
+		pm_runtime_put(dev);
+	}
+	return 0;
+}
+
+static int rknand_pm_resume(struct device *dev)
+{
+	if (rk_nand_suspend_state == 1) {
+		rk_nand_suspend_state = 0;
+		pm_runtime_get_sync(dev);
+		rknand_dev_resume();
+	}
+	return 0;
+}
+
+static const struct dev_pm_ops rknand_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(rknand_pm_suspend, rknand_pm_resume)
+};
+
 #ifdef CONFIG_OF
 static const struct of_device_id of_rk_nandc_match[] = {
 	{.compatible = "rockchip,rk-nandc"},
@@ -412,7 +466,7 @@ static struct platform_driver rknand_driver = {
 #ifdef CONFIG_OF
 		.of_match_table	= of_rk_nandc_match,
 #endif
-		.owner	= THIS_MODULE,
+		.pm = &rknand_dev_pm_ops,
 	},
 };
 

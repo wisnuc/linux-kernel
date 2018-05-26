@@ -30,9 +30,7 @@
 #include <asm/div64.h>
 #include <linux/uaccess.h>
 #include <linux/rockchip/cpu.h>
-#include <linux/rockchip/iomap.h>
 #include <linux/rockchip/grf.h>
-#include <linux/rockchip/common.h>
 #include <dt-bindings/clock/rk_system_status.h>
 
 #include "rk3368_lcdc.h"
@@ -2202,8 +2200,8 @@ static int rk3368_load_screen(struct rk_lcdc_driver *dev_drv, bool initscreen)
 	    dev_drv->trsm_ops &&
 	    dev_drv->trsm_ops->enable)
 		dev_drv->trsm_ops->enable();
-		if (screen->init)
-			screen->init();
+	if (screen->init)
+		screen->init();
 	/*if (!lcdc_dev->standby)
 		lcdc_msk_reg(lcdc_dev, SYS_CTRL,
 			m_STANDBY_EN, v_STANDBY_EN(0));*/

@@ -93,6 +93,17 @@
 		regulator-boot-on;
 	};
 
+	vcc_otg_vbus: otg-vbus-regulator {
+		compatible = "regulator-fixed";
+		gpio = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&otg_vbus_drv>;
+		regulator-name = "vcc_otg_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		enable-active-high;
+	};
+
 	wireless-bluetooth {
 		compatible = "bluetooth-platdata";
 		clocks = <&rk805 1>;
@@ -110,8 +121,7 @@
 	wireless-wlan {
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
-		wifi_chip_type = "ap6335";
-		sdio_vref = <3300>;
+		wifi_chip_type = "ap6255";
 		WIFI,host_wake_irq = <&gpio0 28 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
@@ -149,7 +159,7 @@
 		reg = <0x18>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
-		spinctrl-names = "default";
+		pinctrl-names = "default";
 		pinctrl-0 = <&pmic_int_l>;
 		rockchip,system-power-controller;
 		wakeup-source;
@@ -285,7 +295,7 @@
 	status = "okay";
 
 	vccio1-supply = <&vcc_io>;
-	vccio2-supply = <&vcc_io>;
+	vccio2-supply = <&vcc_18>;
 	vccio4-supply = <&vcc_io>;
 };
 
@@ -306,6 +316,10 @@
 		host_vbus_drv: host-vbus-drv {
 			rockchip,pins = <3 20 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
+
+		otg_vbus_drv: otg-vbus-drv {
+			rockchip,pins = <3 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
 	};
 
 	keys {
@@ -316,10 +330,11 @@
 };
 
 &sdio {
-	status = "okay";
+	max-frequency = <150000000>;
 	mmc-pwrseq = <&sdio_pwrseq>;
-	assigned-clocks = <&cru SCLK_SDIO_SRC>;
-	assigned-clock-parents = <&xin24m>;
+	num-slots = <1>;
+	sd-uhs-sdr104;
+	status = "okay";
 };
 
 &sdmmc {
@@ -328,6 +343,10 @@
 
 &u2phy0_host {
 	phy-supply = <&vcc_host>;
+};
+
+&u2phy0_otg {
+	vbus-supply = <&vcc_otg_vbus>;
 };
 
 &usb_host0_ehci {

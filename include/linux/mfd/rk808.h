@@ -52,8 +52,6 @@ enum rk816_reg {
 	RK816_ID_DCDC2,
 	RK816_ID_DCDC3,
 	RK816_ID_DCDC4,
-	RK816_ID_BOOST,
-	RK816_ID_OTG_SWITCH,
 	RK816_ID_LDO1,
 	RK816_ID_LDO2,
 	RK816_ID_LDO3,
@@ -474,14 +472,22 @@ enum rk805_reg {
 #define DISCHG_ILIM_ENABLE	BIT(7)
 
 /* IRQ Definitions */
-#define RK805_IRQ_PWRON_RISE		0
 #define RK805_IRQ_VB_LOW		1
 #define RK805_IRQ_PWRON			2
 #define RK805_IRQ_PWRON_LP		3
 #define RK805_IRQ_HOTDIE		4
 #define RK805_IRQ_RTC_ALARM		5
 #define RK805_IRQ_RTC_PERIOD		6
-#define RK805_IRQ_PWRON_FALL		7
+
+/*
+ * When PMIC irq occurs, regmap-irq.c will traverse all PMIC child
+ * interrupts from low index 0 to high index, we give fall interrupt
+ * high priority to be called earlier than rise, so that it can be
+ * override by late rise event. This can helps to solve key release
+ * glitch which make a wrongly fall event immediately after rise.
+ */
+#define RK805_IRQ_PWRON_FALL		0
+#define RK805_IRQ_PWRON_RISE		7
 
 #define RK805_IRQ_PWRON_RISE_MSK	BIT(0)
 #define RK805_IRQ_VB_LOW_MSK		BIT(1)
@@ -539,6 +545,7 @@ enum rk805_reg {
 #define RK805_OUT_REG			0x52
 #define RK805_ON_SOURCE_REG		0xAE
 #define RK805_OFF_SOURCE_REG		0xAF
+#define RK805_DCDC_VRP_REG		0x92
 
 #define RK805_NUM_REGULATORS		7
 
@@ -549,7 +556,7 @@ enum rk805_reg {
 #define RK816_CHIP_NAME_REG			0x17
 #define RK816_CHIP_VER_REG			0x18
 #define RK816_OTP_VER_REG			0x19
-#define RK816_NUM_REGULATORS			12
+#define RK816_NUM_REGULATORS			10
 
 /*POWER ON/OFF REGISTER*/
 #define RK816_VB_MON_REG			0x21
@@ -606,6 +613,78 @@ enum rk805_reg {
 #define RK816_BAT_CTRL_REG                      0xA6
 #define RK816_BAT_HTS_TS_REG                    0xA8
 #define RK816_BAT_LTS_TS_REG                    0xA9
+
+#define RK816_TS_CTRL_REG			0xAC
+#define RK816_ADC_CTRL_REG			0xAD
+#define RK816_GGCON_REG				0xB0
+#define RK816_GGSTS_REG				0xB1
+#define RK816_ZERO_CUR_ADC_REGH			0xB2
+#define RK816_ZERO_CUR_ADC_REGL			0xB3
+#define RK816_GASCNT_CAL_REG3			0xB4
+#define RK816_GASCNT_CAL_REG2			0xB5
+#define RK816_GASCNT_CAL_REG1			0xB6
+#define RK816_GASCNT_CAL_REG0			0xB7
+#define RK816_GASCNT_REG3			0xB8
+#define RK816_GASCNT_REG2			0xB9
+#define RK816_GASCNT_REG1			0xBA
+#define RK816_GASCNT_REG0			0xBB
+#define RK816_BAT_CUR_AVG_REGH			0xBC
+#define RK816_BAT_CUR_AVG_REGL			0xBD
+#define RK816_TS_ADC_REGH			0xBE
+#define RK816_TS_ADC_REGL			0xBF
+#define RK816_USB_ADC_REGH			0xC0
+#define RK816_USB_ADC_REGL			0xC1
+#define RK816_BAT_OCV_REGH			0xC2
+#define RK816_BAT_OCV_REGL			0xC3
+#define RK816_BAT_VOL_REGH			0xC4
+#define RK816_BAT_VOL_REGL			0xC5
+#define RK816_RELAX_ENTRY_THRES_REGH		0xC6
+#define RK816_RELAX_ENTRY_THRES_REGL		0xC7
+#define RK816_RELAX_EXIT_THRES_REGH		0xC8
+#define RK816_RELAX_EXIT_THRES_REGL		0xC9
+#define RK816_RELAX_VOL1_REGH			0xCA
+#define RK816_RELAX_VOL1_REGL			0xCB
+#define RK816_RELAX_VOL2_REGH			0xCC
+#define RK816_RELAX_VOL2_REGL			0xCD
+#define RK816_RELAX_CUR1_REGH			0xCE
+#define RK816_RELAX_CUR1_REGL			0xCF
+#define RK816_RELAX_CUR2_REGH			0xD0
+#define RK816_RELAX_CUR2_REGL			0xD1
+#define RK816_CAL_OFFSET_REGH			0xD2
+#define RK816_CAL_OFFSET_REGL			0xD3
+#define RK816_NON_ACT_TIMER_CNT_REG		0xD4
+#define RK816_VCALIB0_REGH			0xD5
+#define RK816_VCALIB0_REGL			0xD6
+#define RK816_VCALIB1_REGH			0xD7
+#define RK816_VCALIB1_REGL			0xD8
+#define RK816_FCC_GASCNT_REG3			0xD9
+#define RK816_FCC_GASCNT_REG2			0xDA
+#define RK816_FCC_GASCNT_REG1			0xDB
+#define RK816_FCC_GASCNT_REG0			0xDC
+#define RK816_IOFFSET_REGH			0xDD
+#define RK816_IOFFSET_REGL			0xDE
+#define RK816_SLEEP_CON_SAMP_CUR_REG		0xDF
+
+/*DATA REGISTER*/
+#define RK816_SOC_REG				0xE0
+#define	RK816_REMAIN_CAP_REG3			0xE1
+#define	RK816_REMAIN_CAP_REG2			0xE2
+#define	RK816_REMAIN_CAP_REG1			0xE3
+#define	RK816_REMAIN_CAP_REG0			0xE4
+#define	RK816_UPDATE_LEVE_REG			0xE5
+#define	RK816_NEW_FCC_REG3			0xE6
+#define	RK816_NEW_FCC_REG2			0xE7
+#define	RK816_NEW_FCC_REG1			0xE8
+#define	RK816_NEW_FCC_REG0			0xE9
+#define RK816_NON_ACT_TIMER_CNT_REG_SAVE	0xEA
+#define RK816_OCV_VOL_VALID_REG			0xEB
+#define RK816_REBOOT_CNT_REG			0xEC
+#define RK816_PCB_IOFFSET_REG			0xED
+#define RK816_MISC_MARK_REG			0xEE
+#define RK816_HALT_CNT_REG			0xEF
+#define RK816_CALC_REST_REGH			0xF0
+#define RK816_CALC_REST_REGL			0xF1
+#define DATA18_REG				0xF2
 
 /*INTERRUPT REGISTER*/
 #define RK816_INT_STS_REG1			0x49
@@ -682,6 +761,7 @@ enum rk805_reg {
 #define BUCK1_2_IMAX_MAX			(0x3 << 6)
 #define BUCK3_4_IMAX_MAX			(0x3 << 3)
 #define BOOST_DISABLE				((0x1 << 5) | (0x0 << 1))
+#define BUCK4_VRP_3PERCENT			0xc0
 
 #define TEMP105C			0x08
 #define TEMP115C			0x0c
@@ -693,6 +773,176 @@ enum rk805_reg {
 #define PWM_MODE_MSK			BIT(7)
 #define FPWM_MODE			BIT(7)
 #define AUTO_PWM_MODE			0
+
+enum rk817_reg_id {
+	RK817_ID_DCDC1 = 0,
+	RK817_ID_DCDC2,
+	RK817_ID_DCDC3,
+	RK817_ID_DCDC4,
+	RK817_ID_LDO1,
+	RK817_ID_LDO2,
+	RK817_ID_LDO3,
+	RK817_ID_LDO4,
+	RK817_ID_LDO5,
+	RK817_ID_LDO6,
+	RK817_ID_LDO7,
+	RK817_ID_LDO8,
+	RK817_ID_LDO9,
+	RK817_ID_BOOST,
+	RK817_ID_BOOST_OTG_SW,
+	RK817_NUM_REGULATORS
+};
+
+enum rk809_reg_id {
+	RK809_ID_DCDC5 = RK817_ID_BOOST,
+	RK809_ID_SW1,
+	RK809_ID_SW2,
+	RK809_NUM_REGULATORS
+};
+
+#define RK817_SECONDS_REG		0x00
+#define RK817_MINUTES_REG		0x01
+#define RK817_HOURS_REG			0x02
+#define RK817_DAYS_REG			0x03
+#define RK817_MONTHS_REG		0x04
+#define RK817_YEARS_REG			0x05
+#define RK817_WEEKS_REG			0x06
+#define RK817_ALARM_SECONDS_REG		0x07
+#define RK817_ALARM_MINUTES_REG		0x08
+#define RK817_ALARM_HOURS_REG		0x09
+#define RK817_ALARM_DAYS_REG		0x0a
+#define RK817_ALARM_MONTHS_REG		0x0b
+#define RK817_ALARM_YEARS_REG		0x0c
+#define RK817_RTC_CTRL_REG		0xd
+#define RK817_RTC_STATUS_REG		0xe
+#define RK817_RTC_INT_REG		0xf
+#define RK817_RTC_COMP_LSB_REG		0x10
+#define RK817_RTC_COMP_MSB_REG		0x11
+
+#define RK817_POWER_EN_REG(i)		(0xb1 + (i))
+#define RK817_POWER_SLP_EN_REG(i)	(0xb5 + (i))
+
+#define RK817_POWER_CONFIG		(0xb9)
+
+#define RK817_BUCK_CONFIG_REG(i)	(0xba + (i) * 3)
+
+#define RK817_BUCK1_ON_VSEL_REG		0xBB
+#define RK817_BUCK1_SLP_VSEL_REG	0xBC
+
+#define RK817_BUCK2_CONFIG_REG		0xBD
+#define RK817_BUCK2_ON_VSEL_REG		0xBE
+#define RK817_BUCK2_SLP_VSEL_REG	0xBF
+
+#define RK817_BUCK3_CONFIG_REG		0xC0
+#define RK817_BUCK3_ON_VSEL_REG		0xC1
+#define RK817_BUCK3_SLP_VSEL_REG	0xC2
+
+#define RK817_BUCK4_CONFIG_REG		0xC3
+#define RK817_BUCK4_ON_VSEL_REG		0xC4
+#define RK817_BUCK4_SLP_VSEL_REG	0xC5
+
+#define RK817_LDO_ON_VSEL_REG(idx)	(0xcc + (idx) * 2)
+#define RK817_BOOST_OTG_CFG		(0xde)
+
+#define RK817_ID_MSB			0xed
+#define RK817_ID_LSB			0xee
+
+#define RK817_SYS_STS			0xf0
+#define RK817_SYS_CFG(i)		(0xf1 + (i))
+
+#define RK817_ON_SOURCE_REG		0xf5
+#define RK817_OFF_SOURCE_REG		0xf6
+
+/* INTERRUPT REGISTER */
+#define RK817_INT_STS_REG0		0xf8
+#define RK817_INT_STS_MSK_REG0		0xf9
+#define RK817_INT_STS_REG1		0xfa
+#define RK817_INT_STS_MSK_REG1		0xfb
+#define RK817_INT_STS_REG2		0xfc
+#define RK817_INT_STS_MSK_REG2		0xfd
+#define RK817_GPIO_INT_CFG		0xfe
+
+/* IRQ Definitions */
+#define RK817_IRQ_PWRON_FALL		0
+#define RK817_IRQ_PWRON_RISE		1
+#define RK817_IRQ_PWRON			2
+#define RK817_IRQ_PWMON_LP		3
+#define RK817_IRQ_HOTDIE		4
+#define RK817_IRQ_RTC_ALARM		5
+#define RK817_IRQ_RTC_PERIOD		6
+#define RK817_IRQ_VB_LO			7
+#define RK817_IRQ_PLUG_IN		(8 + 0)
+#define RK817_IRQ_PLUG_OUT		(8 + 1)
+#define RK817_IRQ_CHRG_TERM		(8 + 2)
+#define RK817_IRQ_CHRG_TIME		(8 + 3)
+#define RK817_IRQ_CHRG_TS		(8 + 4)
+#define RK817_IRQ_USB_OV		(8 + 5)
+#define RK817_IRQ_CHRG_IN_CLMP		(8 + 6)
+#define RK817_IRQ_BAT_DIS_ILIM		(8 + 7)
+#define RK817_IRQ_GATE_GPIO		(16 + 0)
+#define RK817_IRQ_TS_GPIO		(16 + 1)
+#define RK817_IRQ_CODEC_PD		(16 + 2)
+#define RK817_IRQ_CODEC_PO		(16 + 3)
+#define RK817_IRQ_CLASSD_MUTE_DONE	(16 + 4)
+#define RK817_IRQ_CLASSD_OCP		(16 + 5)
+#define RK817_IRQ_BAT_OVP		(16 + 6)
+#define RK817_IRQ_CHRG_BAT_HI		(16 + 7)
+#define RK817_IRQ_END			(RK817_IRQ_CHRG_BAT_HI + 1)
+
+/*
+ * rtc_ctrl 0xd
+ * same as 808, except bit4
+ */
+#define RK817_RTC_CTRL_RSV4		BIT(4)
+
+/* power config 0xb9 */
+#define RK817_BUCK3_FB_RES_MSK		BIT(6)
+#define RK817_BUCK3_FB_RES_INTER	BIT(6)
+#define RK817_BUCK3_FB_RES_EXT		0
+
+/* buck config 0xba */
+#define RK817_RAMP_RATE_OFFSET		6
+#define RK817_RAMP_RATE_MASK		(0x3 << RK817_RAMP_RATE_OFFSET)
+#define RK817_RAMP_RATE_3MV_PER_US	(0x0 << RK817_RAMP_RATE_OFFSET)
+#define RK817_RAMP_RATE_6_3MV_PER_US	(0x1 << RK817_RAMP_RATE_OFFSET)
+#define RK817_RAMP_RATE_12_5MV_PER_US	(0x2 << RK817_RAMP_RATE_OFFSET)
+#define RK817_RAMP_RATE_25MV_PER_US	(0x3 << RK817_RAMP_RATE_OFFSET)
+
+/* sys_cfg1 0xf2 */
+#define RK817_HOTDIE_TEMP_MSK		(0x3 << 4)
+#define RK817_HOTDIE_85			(0x0 << 4)
+#define RK817_HOTDIE_95			(0x1 << 4)
+#define RK817_HOTDIE_105		(0x2 << 4)
+#define RK817_HOTDIE_115		(0x3 << 4)
+
+#define RK817_TSD_TEMP_MSK		BIT(6)
+#define RK817_TSD_140			0
+#define RK817_TSD_160			BIT(6)
+
+#define RK817_CLK32KOUT2_EN		BIT(7)
+
+/* sys_cfg3 0xf4 */
+#define RK817_SLPPIN_FUNC_MSK		(0x3 << 3)
+#define SLPPIN_NULL_FUN			(0x0 << 3)
+#define SLPPIN_SLP_FUN			(0x1 << 3)
+#define SLPPIN_DN_FUN			(0x2 << 3)
+#define SLPPIN_RST_FUN			(0x3 << 3)
+
+#define RK817_RST_FUNC_MSK		(0x3 << 6)
+#define RK817_RST_FUNC_SFT		(6)
+#define RK817_RST_FUNC_CNT		(3)
+#define RK817_RST_FUNC_DEV		(0) /* reset the dev */
+#define RK817_RST_FUNC_REG		(0x1 << 6) /* reset the reg only */
+
+#define RK817_SLPPOL_MSK		BIT(5)
+#define RK817_SLPPOL_H			BIT(5)
+#define RK817_SLPPOL_L			(0)
+
+/* gpio&int 0xfe */
+#define RK817_INT_POL_MSK		BIT(1)
+#define RK817_INT_POL_H			BIT(1)
+#define RK817_INT_POL_L			0
+#define RK809_BUCK5_CONFIG(i)		(RK817_BOOST_OTG_CFG + (i) * 1)
 
 enum {
 	BUCK_ILMIN_50MA,
@@ -716,17 +966,28 @@ enum {
 	BOOST_ILMIN_250MA,
 };
 
+struct rk808_pin_info {
+	struct pinctrl *p;
+	struct pinctrl_state *reset;
+	struct pinctrl_state *power_off;
+	struct pinctrl_state *sleep;
+};
+
 struct rk808 {
 	struct i2c_client *i2c;
 	struct regmap_irq_chip_data *irq_data;
+	struct regmap_irq_chip_data *battery_irq_data;
 	struct regmap *regmap;
 	long variant;
+	struct rk808_pin_info *pins;
 };
 
 enum {
 	RK805_ID = 0x8050,
 	RK808_ID = 0x0000,
+	RK809_ID = 0x8090,
 	RK816_ID = 0x8160,
+	RK817_ID = 0x8170,
 	RK818_ID = 0x8180,
 };
 

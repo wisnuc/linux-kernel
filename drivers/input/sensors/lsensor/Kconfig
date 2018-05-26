@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 #
 # light and position sensor drivers configuration
 #
@@ -42,5 +43,10 @@ config LS_PHOTORESISTOR
 config LS_US5152
   bool "light sensor us5152"
         default n
+
+config LS_STK3410
+	bool "light sensor stk3410"
+	default n
+
 endif
 
