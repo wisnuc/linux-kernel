@@ -1272,7 +1272,7 @@ static int tc35874x_s_register(struct v4l2_subdev *sd,
 		return 0;
 
 	i2c_wrreg(sd, (u16)reg->reg, reg->val,
-			tc35874x_get_reg_size(reg->reg));
+			tc358743_get_reg_size(reg->reg));
 
 	return 0;
 }

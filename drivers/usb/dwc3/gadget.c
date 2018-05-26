@@ -1236,7 +1236,7 @@ static int __dwc3_gadget_ep_queue_zlp(struct dwc3 *dwc, struct dwc3_ep *dep)
 	struct usb_request		*request;
 	struct usb_ep			*ep = &dep->endpoint;
 
-	dwc3_trace(trace_dwc3_gadget, "queueing ZLP");
+	dwc3_trace(trace_dwc3_gadget, "queueing ZLP\n");
 	request = dwc3_gadget_ep_alloc_request(ep, GFP_ATOMIC);
 	if (!request)
 		return -ENOMEM;
@@ -1271,9 +1271,16 @@ static int dwc3_gadget_ep_queue(struct usb_ep *ep, struct usb_request *request,
 	 * any other request.
 	 */
 	if (ret == 0 && request->zero && request->length &&
+<<<<<<< HEAD
 	    (request->length % ep->desc->wMaxPacketSize == 0))
 		ret = __dwc3_gadget_ep_queue_zlp(dwc, dep);
 
+=======
+	    (request->length % ep->maxpacket == 0))
+		ret = __dwc3_gadget_ep_queue_zlp(dwc, dep);
+
+out:
+>>>>>>> a748c8be5abe
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return ret;
@@ -2538,6 +2545,8 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		dwc->gadget.speed = USB_SPEED_LOW;
 		break;
 	}
+
+	dwc->eps[1]->endpoint.maxpacket = dwc->gadget.ep0->maxpacket;
 
 	/* Enable USB2 LPM Capability */
 
